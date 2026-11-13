@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Lint 白名单。
+  1. ObsoleteSdkInt on mipmap-anydpi-v26：lint 认为 minSdk = 26 时 -v26 限定符多余。
+     实测把自适应图标放到 res/mipmap-anydpi/（不带 -v26）会让 AAPT2 彻底丢弃该资源，
+     编译报 "resource mipmap/ic_launcher not found"。所以这个限定符是**必须保留**的。
+  2. UnusedResources 对 values/colors.xml 的 ic_launcher_background：它只被
+     mipmap-anydpi-v26 里的 adaptive-icon 引用，lint 的引用分析看不到这条链。
+-->
+<lint>
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+</lint>

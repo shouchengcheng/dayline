@@ -49,6 +49,7 @@ $env:JAVA_HOME="D:\cursor_workspace\.toolchain\jdk\jdk-17.0.20.1+1"
 | 项 | 状态 |
 |---|---|
 | 编译（`assembleDebug`） | ✅ 通过 |
-| 单测（26 个） | ✅ 全通过 |
+| 单测（34 个） | ✅ 全通过 |
+| Lint（`lintDebug`） | ✅ 0 errors |
 | DAO / Compose instrumentation 测试 | ⬜ 未写（见方案 §10.2） |
 | 真机验收 | ⬜ 需设备（见方案 §11.2 验收清单） |
