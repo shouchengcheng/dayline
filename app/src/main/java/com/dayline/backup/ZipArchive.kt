@@ -41,24 +41,36 @@ object ZipArchive {
             for ((name, src) in entries) {
                 val entry = ZipEntry(safeEntryName(name))
                 if (isStored(name)) {
-                    // 已压缩格式：STORED 需要在写之前把 size/crc 算好
-                    val crc = java.util.zip.CRC32()
-                    var size = 0L
-                    src.inputStream().use { input ->
-                        val buf = ByteArray(bufferSize)
-                        while (true) {
-                            val n = input.read(buf)
-                            if (n <= 0) break
-                            crc.update(buf, 0, n)
-                            size += n
+                    // 已压缩格式用 STORED，避免二次压缩白烧 CPU。
+                    //
+                    // 取舍说明：STORED 必须在 putNextEntry 之前把 size/crc 填好，所以这里会先拷进
+                    // cacheDir 下的临时文件并同时算 CRC，再从那一个副本写进 zip——**只读源文件一遍**。
+                    // 早期版本是先扫一遍源文件算 CRC、再读一遍拷贝，1GB 视频等于 2GB 读 IO。
+                    val tmp = File.createTempFile("zipstored-", ".tmp", target.parentFile ?: File("."))
+                    try {
+                        val crc = java.util.zip.CRC32()
+                        var size = 0L
+                        java.io.BufferedOutputStream(FileOutputStream(tmp), bufferSize).use { out ->
+                            src.inputStream().use { input ->
+                                val buf = ByteArray(bufferSize)
+                                while (true) {
+                                    val n = input.read(buf)
+                                    if (n <= 0) break
+                                    crc.update(buf, 0, n)
+                                    out.write(buf, 0, n)
+                                    size += n
+                                }
+                            }
                         }
+                        entry.method = ZipEntry.STORED
+                        entry.size = size
+                        entry.compressedSize = size
+                        entry.crc = crc.value
+                        zos.putNextEntry(entry)
+                        tmp.inputStream().use { it.copyTo(zos, bufferSize) }
+                    } finally {
+                        tmp.delete()
                     }
-                    entry.method = ZipEntry.STORED
-                    entry.size = size
-                    entry.compressedSize = size
-                    entry.crc = crc.value
-                    zos.putNextEntry(entry)
-                    src.inputStream().use { it.copyTo(zos, bufferSize) }
                 } else {
                     entry.method = ZipEntry.DEFLATED
                     zos.putNextEntry(entry)

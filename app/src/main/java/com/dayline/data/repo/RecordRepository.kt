@@ -41,48 +41,70 @@ class RecordRepository(
 
     suspend fun load(id: String) = recordDao.findById(id)
 
-    suspend fun save(draft: RecordDraft): SaveOutcome = db.withTransaction {
+    /**
+     * 保存一条记录。
+     *
+     * 分两步走，**事务里只做纯数据库写入**：
+     * 1) 事务外：把老路径的 sha256 全部算好（可能要读整个视频文件，1GB 视频几百毫秒到几秒）；
+     * 2) 事务内：登记 media_files + 写 records/tags。
+     *
+     * 取舍说明：之前把 sha 计算放在 `withTransaction {}` 里，等于整个哈希计算期间都持有 SQLite
+     * 写锁——用户保存一个带大视频的记录时，后台的过期清理、导入落库全被卡住，甚至 ANR。
+     * 哈希是只读计算，没有任何理由占用事务。
+     */
+    suspend fun save(draft: RecordDraft): SaveOutcome {
         val now = System.currentTimeMillis()
-        val existing = recordDao.findEntityById(draft.id)
 
-        // 1) 本次新落盘的文件登记进 media_files（sha256 主键，天然去重）
-        for (file in draft.newFiles) {
-            mediaDao.insert(
-                com.dayline.data.db.MediaFileEntity(
-                    sha256 = file.sha256,
-                    relativePath = file.relativePath,
-                    kind = file.kind.name.lowercase(),
-                    sizeBytes = file.sizeBytes,
-                    createdAt = now
-                )
-            )
-        }
-
-        // 2) 老路径也要能算指纹：先查索引，查不到就现算一次并补登记
+        // ---------- 1) 事务外：解析所有媒体的 sha256 ----------
         val allPaths = draft.imagePaths + draft.videoPaths + draft.videoCoverPaths
         val shas = LinkedHashSet<String>(draft.newFiles.map { it.sha256 })
+        val resolvedFiles = ArrayList<com.dayline.data.db.MediaFileEntity>(allPaths.size)
         for (path in allPaths) {
             if (draft.newFiles.any { it.relativePath == path }) continue
             val known = mediaDao.findByPath(path)?.sha256
             if (known != null) {
                 shas += known
-            } else {
-                val file = media.resolve(path)
-                if (file.isFile) {
-                    val sha = media.sha256Of(file)
-                    shas += sha
-                    mediaDao.insert(
-                        com.dayline.data.db.MediaFileEntity(
-                            sha256 = sha,
-                            relativePath = path,
-                            kind = com.dayline.backup.Naming.kindOf(path).name.lowercase(),
-                            sizeBytes = file.length(),
-                            createdAt = now
-                        )
-                    )
-                }
+                continue
             }
+            val file = media.resolve(path)
+            if (!file.isFile) continue
+            val sha = media.sha256Of(file)          // ← 唯一的重 IO，已在事务外
+            shas += sha
+            resolvedFiles += com.dayline.data.db.MediaFileEntity(
+                sha256 = sha,
+                relativePath = path,
+                kind = com.dayline.backup.Naming.kindOf(path).name.lowercase(),
+                sizeBytes = file.length(),
+                createdAt = now
+            )
         }
+
+        val fingerprint = Fingerprint.of(
+            content = draft.content,
+            side = draft.side,
+            recordDate = draft.recordDate,
+            tagNames = draft.tagNames,
+            mediaShas = shas
+        )
+
+        // ---------- 2) 事务内：只做数据库写入 ----------
+        return db.withTransaction {
+            val existing = recordDao.findEntityById(draft.id)
+
+            // 本次新落盘的文件（sha256 主键，天然去重）
+            for (file in draft.newFiles) {
+                mediaDao.insert(
+                    com.dayline.data.db.MediaFileEntity(
+                        sha256 = file.sha256,
+                        relativePath = file.relativePath,
+                        kind = file.kind.name.lowercase(),
+                        sizeBytes = file.sizeBytes,
+                        createdAt = now
+                    )
+                )
+            }
+            // 事务外补算出哈希的老媒体
+            for (entity in resolvedFiles) mediaDao.insert(entity)
 
         // 标签按 name 复用
         val tagIds = ArrayList<String>(draft.tagNames.size)
@@ -96,14 +118,6 @@ class RecordRepository(
                 tagIds += id
             }
         }
-
-        val fingerprint = Fingerprint.of(
-            content = draft.content,
-            side = draft.side,
-            recordDate = draft.recordDate,
-            tagNames = draft.tagNames,
-            mediaShas = shas
-        )
 
         val entity = RecordEntity(
             id = draft.id,
@@ -127,6 +141,7 @@ class RecordRepository(
         tagDao.pruneOrphans()
 
         SaveOutcome(id = entity.id, isNew = existing == null)
+        }
     }
 
     /**
