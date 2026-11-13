@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="warm_bg">#FFFDF8F3</color>
+    <color name="warm_ink">#FF4A3F35</color>
+
+    <style name="Theme.Dayline" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/warm_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  FileProvider 共享范围，必须与代码里的实际目录一致：
+  - media/  : 私有目录下的图片/视频/封面（列表里点开媒体时分享给系统播放器）
+  - backup/ : 导出 zip 的临时目录（cacheDir/backup），分享完不常驻
+  取舍说明：只暴露这两个子目录，不暴露 filesDir 根，避免把数据库文件也放进可分享范围。
+-->
+<paths>
+    <files-path name="media" path="media/" />
+    <cache-path name="backup" path="backup/" />
+</paths>
