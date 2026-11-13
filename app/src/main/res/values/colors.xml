@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 自适应图标的底色：与 App 背景同色，图标在桌面上不会出现方块边缘 -->
+    <color name="ic_launcher_background">#FDF8F3</color>
+</resources>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ 的备份/迁移规则。
+  本 App 的全部数据都是用户私密日记，明确不允许任何形式的云端备份与设备迁移
+  （迁移走用户自己控制的 zip 导出，见设置页「备份」）。
+  取舍说明：allowBackup="false" 在 Android 12+ 只对云备份生效，D2D 迁移需要这个文件兜住。
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

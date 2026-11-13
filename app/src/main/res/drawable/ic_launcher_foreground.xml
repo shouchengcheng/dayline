@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  自适应图标前景。图形就是 App 的核心隐喻：
+  一条贯穿的中轴，左边一块卡片、右边一块卡片，轴上有两个节点。
+  108x108 视口，安全区按 Material 规范保持在中心 72x72 内。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 中轴 -->
+    <path
+        android:fillColor="#E0CFB8"
+        android:pathData="M52.5,30 L55.5,30 L55.5,80 L52.5,80 Z" />
+
+    <!-- 左卡片（有益） -->
+    <path
+        android:fillColor="#D8E5BC"
+        android:pathData="M30,36 Q30,33 33,33 L47,33 Q50,33 50,36 L50,46 Q50,49 47,49 L33,49 Q30,49 30,46 Z" />
+
+    <!-- 右卡片（糟糕） -->
+    <path
+        android:fillColor="#E7D2C5"
+        android:pathData="M58,58 Q58,55 61,55 L75,55 Q78,55 78,58 L78,68 Q78,71 75,71 L61,71 Q58,71 58,68 Z" />
+
+    <!-- 轴上的节点 -->
+    <path
+        android:fillColor="#6F8F4E"
+        android:pathData="M54,36 m-3.2,0 a3.2,3.2 0 1,0 6.4,0 a3.2,3.2 0 1,0 -6.4,0" />
+    <path
+        android:fillColor="#B07A5E"
+        android:pathData="M54,63 m-3.2,0 a3.2,3.2 0 1,0 6.4,0 a3.2,3.2 0 1,0 -6.4,0" />
+</vector>
