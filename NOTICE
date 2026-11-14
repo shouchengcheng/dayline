@@ -1,0 +1,48 @@
+DayLine（暖记）
+Copyright 2026 The DayLine Authors
+
+This product is licensed under the Apache License, Version 2.0 (the "License");
+you may not use this product except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+
+--------------------------------------------------------------------------
+NOTICE — 第三方组件与许可
+--------------------------------------------------------------------------
+
+本项目的**自有代码**（app/src/main/java/com/dayline/**、app/src/test/**、
+docs/**、gradle 构建脚本）采用 Apache License 2.0。
+
+本项目**不内置也不打包**任何第三方源代码。运行时依赖通过 Gradle 从 Maven
+仓库解析，各自保留其原始许可证。主要依赖及许可证如下（以实际解析版本为准，
+可用 `./gradlew :app:dependencies` 核对）：
+
+  AndroidX Core / Activity / Lifecycle        Apache-2.0
+  AndroidX Compose (UI / Foundation / Material3) Apache-2.0
+  AndroidX Room (runtime / ktx / paging)      Apache-2.0
+  AndroidX Paging (runtime / compose)         Apache-2.0
+  AndroidX DataStore (preferences)            Apache-2.0
+  Kotlin Standard Library / kotlinx.coroutines Apache-2.0
+  kotlinx.serialization                       Apache-2.0
+  Coil (coil-compose)                         Apache-2.0
+  Google Material Icons                       Apache-2.0
+
+构建期依赖：
+  Android Gradle Plugin (AGP)                 Apache-2.0
+  Kotlin Gradle Plugin / KSP                  Apache-2.0
+  JUnit 4                                     EPL-1.0
+  Gradle                                      Apache-2.0
+
+Gradle Wrapper 脚本（gradlew / gradlew.bat / gradle/wrapper/*）来自 Gradle
+项目，按 Apache-2.0 分发，见 https://github.com/gradle/gradle 。
+
+发布二进制（APK/AAB）时，请随包附带本 NOTICE 与 LICENSE 文件，以满足
+Apache-2.0 第 4(d) 条对 NOTICE 的要求。

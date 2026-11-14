@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="720" viewBox="0 0 360 720" font-family="-apple-system, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif">
+  <defs>
+    <clipPath id="screen"><rect x="0" y="0" width="360" height="720" rx="24"/></clipPath>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FDF8F3" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#FDF8F3" stop-opacity="1"/>
+    </linearGradient>
+  </defs>
+
+  <g clip-path="url(#screen)">
+    <!-- 背景 -->
+    <rect width="360" height="720" fill="#FDF8F3"/>
+
+    <!-- 状态栏 -->
+    <text x="28" y="34" font-size="12" fill="#8A7A68">9:41</text>
+    <text x="332" y="34" font-size="12" fill="#8A7A68" text-anchor="end">▮▮▮ ▰</text>
+
+    <!-- 顶栏 -->
+    <text x="180" y="70" font-size="16" font-weight="600" fill="#4A3F35" text-anchor="middle">DayLine</text>
+    <text x="180" y="88" font-size="11" fill="#8A7A68" text-anchor="middle">有益  ·  糟糕</text>
+    <text x="300" y="76" font-size="14" fill="#8A7A68" text-anchor="middle">⟳</text>
+    <text x="330" y="76" font-size="14" fill="#8A7A68" text-anchor="middle">⚙</text>
+
+    <!-- 日期头：今天 -->
+    <line x1="16" y1="120" x2="86" y2="120" stroke="#E0CFB8" stroke-width="1.5"/>
+    <text x="180" y="116" font-size="15" font-weight="600" fill="#4A3F35" text-anchor="middle">今天</text>
+    <text x="180" y="132" font-size="10" fill="#8A7A68" text-anchor="middle">11月14日 · 周六</text>
+    <line x1="274" y1="120" x2="344" y2="120" stroke="#E0CFB8" stroke-width="1.5"/>
+
+    <!-- 中轴 -->
+    <line x1="180" y1="128" x2="180" y2="700" stroke="#E0CFB8" stroke-width="2"/>
+
+    <!-- 左卡：有益 -->
+    <circle cx="180" cy="176" r="4" fill="#6F8F4E"/>
+    <rect x="12" y="150" width="148" height="76" rx="18" fill="#F2F6E6" stroke="#DCE5C9" stroke-width="1"/>
+    <circle cx="28" cy="168" r="3" fill="#6F8F4E"/>
+    <text x="38" y="172" font-size="11" fill="#6F8F4E">有益</text>
+    <text x="148" y="172" font-size="10" fill="#8A7A68" text-anchor="end">08:12</text>
+    <text x="26" y="194" font-size="13" fill="#4A3F35">跑完了 5 公里，没有停</text>
+    <text x="26" y="212" font-size="10" fill="#6F8F4E">#运动  #早起</text>
+
+    <!-- 右卡：糟糕 -->
+    <circle cx="180" cy="268" r="4" fill="#B07A5E"/>
+    <rect x="200" y="242" width="148" height="72" rx="18" fill="#F6EBE4" stroke="#E8D3C6" stroke-width="1"/>
+    <circle cx="216" cy="260" r="3" fill="#B07A5E"/>
+    <text x="226" y="264" font-size="11" fill="#B07A5E">糟糕</text>
+    <text x="336" y="264" font-size="10" fill="#8A7A68" text-anchor="end">14:30</text>
+    <text x="214" y="286" font-size="13" fill="#4A3F35">开会又被抢话了</text>
+    <text x="214" y="304" font-size="10" fill="#B07A5E">#工作</text>
+
+    <!-- 左卡：带图片 -->
+    <circle cx="180" cy="368" r="4" fill="#6F8F4E"/>
+    <rect x="12" y="340" width="148" height="132" rx="18" fill="#F2F6E6" stroke="#DCE5C9" stroke-width="1"/>
+    <circle cx="28" cy="358" r="3" fill="#6F8F4E"/>
+    <text x="38" y="362" font-size="11" fill="#6F8F4E">有益</text>
+    <text x="148" y="362" font-size="10" fill="#8A7A68" text-anchor="end">19:05</text>
+    <text x="26" y="384" font-size="13" fill="#4A3F35">傍晚的天很好看</text>
+    <rect x="26" y="396" width="58" height="58" rx="12" fill="#C9D6AE"/>
+    <rect x="90" y="396" width="58" height="58" rx="12" fill="#D9C7A8"/>
+    <text x="55" y="430" font-size="16" fill="#FFFFFF" text-anchor="middle">▣</text>
+    <text x="119" y="430" font-size="16" fill="#FFFFFF" text-anchor="middle">▣</text>
+
+    <!-- 右卡 -->
+    <circle cx="180" cy="512" r="4" fill="#B07A5E"/>
+    <rect x="200" y="486" width="148" height="72" rx="18" fill="#F6EBE4" stroke="#E8D3C6" stroke-width="1"/>
+    <circle cx="216" cy="504" r="3" fill="#B07A5E"/>
+    <text x="226" y="508" font-size="11" fill="#B07A5E">糟糕</text>
+    <text x="336" y="508" font-size="10" fill="#8A7A68" text-anchor="end">23:48</text>
+    <text x="214" y="530" font-size="13" fill="#4A3F35">刷手机到一点半</text>
+    <text x="214" y="548" font-size="10" fill="#B07A5E">#失眠  #手机</text>
+
+    <!-- 日期头：昨天 -->
+    <line x1="16" y1="612" x2="86" y2="612" stroke="#E0CFB8" stroke-width="1.5"/>
+    <text x="180" y="608" font-size="15" font-weight="600" fill="#4A3F35" text-anchor="middle">昨天</text>
+    <text x="180" y="624" font-size="10" fill="#8A7A68" text-anchor="middle">11月13日 · 周五</text>
+    <line x1="274" y1="612" x2="344" y2="612" stroke="#E0CFB8" stroke-width="1.5"/>
+
+    <!-- 底部渐隐 + FAB -->
+    <rect x="0" y="640" width="360" height="80" fill="url(#fade)"/>
+    <rect x="222" y="644" width="114" height="48" rx="16" fill="#6F8F4E"/>
+    <text x="264" y="674" font-size="20" fill="#FFFFFF" text-anchor="middle">+</text>
+    <text x="292" y="674" font-size="14" fill="#FFFFFF" text-anchor="middle">记一笔</text>
+  </g>
+</svg>
