@@ -118,6 +118,7 @@ private fun DaylineRoot(vm: DaylineViewModel) {
 
     val settings by vm.settings.collectAsStateWithLifecycle()
     val editor by vm.editor.collectAsStateWithLifecycle()
+    val detail by vm.detail.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
     val busy by vm.busy.collectAsStateWithLifecycle()
     val exportFile by vm.exportFile.collectAsStateWithLifecycle()
@@ -212,6 +213,19 @@ private fun DaylineRoot(vm: DaylineViewModel) {
         }
 
         // ---- 编辑页（全屏覆盖，带自己的 Scaffold）----
+        // ---- 浏览模式：编辑器打开时隐藏，保存/取消后回到浏览 ----
+        if (editor == null) {
+            detail?.let { item ->
+                com.dayline.ui.detail.DetailScreen(
+                    entry = item,
+                    beneficialLabel = settings.beneficialLabel,
+                    badLabel = settings.badLabel,
+                    onBack = vm::closeDetail,
+                    onEdit = { vm.editRecord(item.record.id) }
+                )
+            }
+        }
+
         editor?.let { state ->
             Box(
                 Modifier
@@ -251,6 +265,7 @@ private fun DaylineRoot(vm: DaylineViewModel) {
                         {
                             vm.softDelete(state.id)
                             vm.closeEditor()
+                            vm.closeDetail()
                         }
                     }
                 )

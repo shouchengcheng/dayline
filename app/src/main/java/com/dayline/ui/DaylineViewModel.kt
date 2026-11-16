@@ -82,6 +82,26 @@ class DaylineViewModel(app: Application) : AndroidViewModel(app) {
     private val _editor = MutableStateFlow<EditorState?>(null)
     val editor: StateFlow<EditorState?> = _editor.asStateFlow()
 
+    /** 浏览模式（只读详情）当前展示的记录；默认点开条目进入这里 */
+    private val _detail = MutableStateFlow<com.dayline.data.db.RecordWithTags?>(null)
+    val detail: StateFlow<com.dayline.data.db.RecordWithTags?> = _detail.asStateFlow()
+
+    fun openRecord(id: String) {
+        viewModelScope.launch { _detail.value = repo.load(id) }
+    }
+
+    fun closeDetail() {
+        _detail.value = null
+    }
+
+    private fun refreshDetail() {
+        val id = _detail.value?.record?.id ?: return
+        viewModelScope.launch {
+            val item = repo.load(id)
+            _detail.value = item?.takeIf { !it.record.isDeleted }
+        }
+    }
+
     private val _busy = MutableStateFlow<String?>(null)
     val busy: StateFlow<String?> = _busy.asStateFlow()
 
@@ -111,7 +131,8 @@ class DaylineViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun openRecord(id: String) {
+    /** 浏览页右上角「编辑」才进入编辑器 */
+    fun editRecord(id: String) {
         viewModelScope.launch {
             val item = repo.load(id) ?: return@launch
             val tags = runCatching { repo.allTags.firstValue() }.getOrDefault(emptyList())
@@ -217,6 +238,7 @@ class DaylineViewModel(app: Application) : AndroidViewModel(app) {
                 )
                 _editor.value = null
                 _message.value = if (state.isNew) "已记下" else "已保存"
+                refreshDetail()
             } catch (t: Throwable) {
                 _editor.update { it?.copy(saving = false) }
                 _message.value = "保存失败：${t.message}"
