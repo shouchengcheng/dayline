@@ -43,6 +43,26 @@ class RecordRepository(
     private val tagDao = db.tagDao()
     private val mediaDao = db.mediaDao()
 
+    /**
+     * 自写的 PagingSource 不会像 Room 生成的那样随表变化自动失效，
+     * 所以用 InvalidatingPagingSourceFactory + Room InvalidationTracker：
+     * records / record_tag / tags 任一表有写入（记一笔、删除、恢复、导入），立刻让当前分页源失效重载。
+     */
+    private val timelineSourceFactory =
+        androidx.paging.InvalidatingPagingSourceFactory { TimelinePagingSource(recordDao) }
+
+    private val tableObserver = object : androidx.room.InvalidationTracker.Observer(
+        arrayOf("records", "record_tag", "tags")
+    ) {
+        override fun onInvalidated(tables: Set<String>) {
+            timelineSourceFactory.invalidate()
+        }
+    }
+
+    init {
+        db.invalidationTracker.addObserver(tableObserver)
+    }
+
     val timeline: Flow<PagingData<TimelineItem>> = Pager(
         config = PagingConfig(
             pageSize = TimelinePagingSource.DEFAULT_DAYS_PER_PAGE,
@@ -51,7 +71,7 @@ class RecordRepository(
             enablePlaceholders = false,
             initialLoadSize = TimelinePagingSource.DEFAULT_DAYS_PER_PAGE
         ),
-        pagingSourceFactory = { TimelinePagingSource(recordDao) }
+        pagingSourceFactory = timelineSourceFactory
     ).flow
 
     val trash: Flow<List<com.dayline.data.db.RecordWithTags>> = recordDao.observeTrash()
