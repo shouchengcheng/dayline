@@ -184,7 +184,7 @@ private fun DaylineRoot(vm: DaylineViewModel) {
                 settings = settings,
                 snackbar = snackbar,
                 onOpenSettings = { screen = Screen.Settings },
-                onNewRecord = { showSidePicker = true }
+                onNewRecord = { vm.newRecord(RecordSide.BENEFICIAL.value) }
             )
 
             Screen.Trash -> TrashScreen(

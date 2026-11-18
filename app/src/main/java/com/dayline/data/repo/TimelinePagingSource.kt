@@ -51,9 +51,11 @@ class TimelinePagingSource(
             val byDate = records.groupBy { it.record.recordDate }
 
             val items = ArrayList<TimelineItem>(dates.size + records.size)
+            // 列表用 reverseLayout（今天在底部、过去在上方），所以每天先放记录（倒序）再放日期头，
+            // 渲染后自上而下是：日期头 → 当天记录按时间先后。
             for (date in dates) {
+                byDate[date]?.asReversed()?.forEach { items += TimelineItem.Entry(it) }
                 items += TimelineItem.DayHeader(date)
-                byDate[date]?.forEach { items += TimelineItem.Entry(it) }
             }
 
             LoadResult.Page(

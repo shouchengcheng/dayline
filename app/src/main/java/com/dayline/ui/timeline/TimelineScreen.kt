@@ -119,7 +119,9 @@ fun TimelineScreen(
             items.itemCount == 0 && items.loadState.refresh is LoadState.NotLoading ->
                 EmptyTimeline()
 
-            else -> LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            else -> LazyColumn(state = listState, reverseLayout = true, modifier = Modifier.fillMaxSize()) {
+                // reverseLayout 下首项在最底部：给 FAB 留出空间，今天最后一条不会被挡住
+                item(key = "fab-space", contentType = "state") { Spacer(Modifier.height(96.dp)) }
                 items(
                     count = items.itemCount,
                     key = items.itemKey { it.key },
@@ -146,10 +148,7 @@ fun TimelineScreen(
                             onRetry = { items.retry() }
                         )
                     }
-                    else -> item(key = "footer-space", contentType = "state") {
-                        // 给 FAB 留出空间，最后一条不会被挡住
-                        Spacer(Modifier.height(96.dp))
-                    }
+                    else -> Unit
                 }
             }
         }
