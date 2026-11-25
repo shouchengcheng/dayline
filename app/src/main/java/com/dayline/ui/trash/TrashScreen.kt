@@ -148,10 +148,12 @@ fun TrashScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(items, key = { it.record.id }) { item ->
+                        // 恢复 / 彻底删除后卡片淡出，下面的卡片顺势补位
                         TrashCard(
                             item = item,
                             onRestore = { onRestore(item.record.id) },
-                            onPurge = { purgeTarget = item.record.id }
+                            onPurge = { purgeTarget = item.record.id },
+                            modifier = Modifier.animateItem(placementSpec = com.dayline.ui.motion.Motion.placementSpec)
                         )
                     }
                 }
@@ -164,13 +166,14 @@ fun TrashScreen(
 private fun TrashCard(
     item: RecordWithTags,
     onRestore: () -> Unit,
-    onPurge: () -> Unit
+    onPurge: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

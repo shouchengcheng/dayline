@@ -18,7 +18,14 @@
 
 package com.dayline.ui.editor
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.graphics.Color
+import com.dayline.ui.motion.Motion
+import com.dayline.ui.motion.pressScale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -214,24 +221,32 @@ fun EditorScreen(
             Spacer(Modifier.height(16.dp))
             Text("图片", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(6.dp))
+            // 以路径为 key，增删缩略图时其余项平滑让位（stableKeys 兜底重复路径，避免 key 冲突崩溃）
+            val imageKeys = remember(state.imagePaths) { stableKeys("img", state.imagePaths) }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(state.imagePaths.size) { index ->
-                    Box {
+                items(state.imagePaths.size, key = { imageKeys[it] }) { index ->
+                    Box(Modifier.animateItem(placementSpec = Motion.placementSpec)) {
                         ImageThumb(relativePath = state.imagePaths[index], modifier = Modifier.size(88.dp))
                         RemoveBadge(onClick = { onRemoveImage(index) })
                     }
                 }
-                item {
-                    AddTile(icon = Icons.Default.Image, label = "加图片", onClick = onPickImages)
+                item(key = "add-image") {
+                    AddTile(
+                        icon = Icons.Default.Image,
+                        label = "加图片",
+                        onClick = onPickImages,
+                        modifier = Modifier.animateItem(placementSpec = Motion.placementSpec)
+                    )
                 }
             }
 
             Spacer(Modifier.height(16.dp))
             Text("视频", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(6.dp))
+            val videoKeys = remember(state.videoPaths) { stableKeys("vid", state.videoPaths) }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(state.videoPaths.size) { index ->
-                    Box {
+                items(state.videoPaths.size, key = { videoKeys[it] }) { index ->
+                    Box(Modifier.animateItem(placementSpec = Motion.placementSpec)) {
                         VideoThumb(
                             coverPath = state.videoCoverPaths.getOrNull(index),
                             modifier = Modifier.size(88.dp)
@@ -239,8 +254,13 @@ fun EditorScreen(
                         RemoveBadge(onClick = { onRemoveVideo(index) })
                     }
                 }
-                item {
-                    AddTile(icon = Icons.Default.Videocam, label = "加视频", onClick = onPickVideos)
+                item(key = "add-video") {
+                    AddTile(
+                        icon = Icons.Default.Videocam,
+                        label = "加视频",
+                        onClick = onPickVideos,
+                        modifier = Modifier.animateItem(placementSpec = Motion.placementSpec)
+                    )
                 }
             }
 
@@ -334,21 +354,35 @@ private fun SideOption(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // 选中态切换时颜色 / 描边渐变，而不是瞬间跳变
+    val spec = tween<Color>(Motion.MEDIUM, easing = Motion.EmphasizedDecelerate)
+    val container by animateColorAsState(
+        if (selected) colors.container else MaterialTheme.colorScheme.surfaceVariant, spec, label = "sideContainer"
+    )
+    val borderColor by animateColorAsState(
+        if (selected) colors.accent else MaterialTheme.colorScheme.outlineVariant, spec, label = "sideBorder"
+    )
+    val textColor by animateColorAsState(
+        if (selected) colors.accent else MaterialTheme.colorScheme.onSurfaceVariant, spec, label = "sideText"
+    )
+    val borderWidth by animateDpAsState(if (selected) 2.dp else 1.dp, tween(Motion.SHORT), label = "sideBorderW")
+    val interaction = remember { MutableInteractionSource() }
+
     Surface(
         onClick = onClick,
-        modifier = modifier.height(48.dp),
+        modifier = modifier
+            .pressScale(interaction)
+            .height(48.dp),
         shape = RoundedCornerShape(14.dp),
-        color = if (selected) colors.container else MaterialTheme.colorScheme.surfaceVariant,
-        border = BorderStroke(
-            width = if (selected) 2.dp else 1.dp,
-            color = if (selected) colors.accent else MaterialTheme.colorScheme.outlineVariant
-        )
+        color = container,
+        border = BorderStroke(width = borderWidth, color = borderColor),
+        interactionSource = interaction
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleMedium,
-                color = if (selected) colors.accent else MaterialTheme.colorScheme.onSurfaceVariant
+                color = textColor
             )
         }
     }
@@ -397,10 +431,10 @@ private fun RemoveBadge(onClick: () -> Unit) {
 }
 
 @Composable
-private fun AddTile(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun AddTile(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.size(88.dp),
+        modifier = modifier.size(88.dp),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
@@ -417,5 +451,14 @@ private fun AddTile(icon: ImageVector, label: String, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+/** 路径 → 列表 key；同一路径第 n 次出现时追加序号，保证 key 唯一且对增删稳定 */
+private fun stableKeys(prefix: String, paths: List<String>): List<String> {
+    val seen = HashMap<String, Int>(paths.size)
+    return paths.map { p ->
+        val n = seen.merge(p, 1, Int::plus)!!
+        if (n == 1) "$prefix:$p" else "$prefix:$p#$n"
     }
 }

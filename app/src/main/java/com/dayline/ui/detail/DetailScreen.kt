@@ -7,6 +7,9 @@ package com.dayline.ui.detail
 import android.widget.MediaController
 import android.widget.VideoView
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import com.dayline.ui.motion.Motion
+import com.dayline.ui.motion.rememberLastNonNull
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -163,11 +166,18 @@ fun DetailScreen(
         }
     }
 
-    viewerIndex?.let { start ->
-        ImageViewer(paths = record.imagePaths, startIndex = start, onClose = { viewerIndex = null })
+    // 看大图 / 播视频：放大淡入、缩小淡出。退出期间保留最后一个值继续绘制。
+    val shownViewer = rememberLastNonNull(viewerIndex)
+    AnimatedVisibility(visible = viewerIndex != null, enter = Motion.viewerEnter, exit = Motion.viewerExit) {
+        shownViewer?.let { start ->
+            ImageViewer(paths = record.imagePaths, startIndex = start, onClose = { viewerIndex = null })
+        }
     }
-    playingVideo?.let { path ->
-        VideoPlayer(relativePath = path, onClose = { playingVideo = null })
+    val shownVideo = rememberLastNonNull(playingVideo)
+    AnimatedVisibility(visible = playingVideo != null, enter = Motion.viewerEnter, exit = Motion.viewerExit) {
+        shownVideo?.let { path ->
+            VideoPlayer(relativePath = path, onClose = { playingVideo = null })
+        }
     }
 }
 

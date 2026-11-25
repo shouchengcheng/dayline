@@ -38,19 +38,27 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dayline.data.db.RecordWithTags
 import com.dayline.domain.RecordSide
 import com.dayline.ui.components.ImageThumb
 import com.dayline.ui.components.VideoThumb
+import com.dayline.ui.motion.pressScale
+import com.dayline.ui.motion.slideFadeIn
 import com.dayline.ui.theme.WarmPalette
 import com.dayline.util.Dates
 
 private val AXIS_WIDTH = 44.dp
+
+/** 卡片入场时从中轴外侧滑入的距离 */
+private val ENTRANCE_OFFSET = 36.dp
 
 /**
  * 一条记录的左右分栏行。
@@ -63,6 +71,10 @@ private val AXIS_WIDTH = 44.dp
  * 因为 weight 会把中轴精确居中，且卡片宽度自适应屏幕，横竖屏都不用改。
  * 行高用 IntrinsicSize.Min + fillMaxHeight 让中轴竖线恰好贴合卡片高度，
  * 避免"竖线比卡片长一截"的割裂感。
+ *
+ * 动效：卡片从**自己那一侧**滑向中轴（左卡从左来、右卡从右来），中轴圆点随后弹出；
+ * 竖线本身不做动画——轴必须始终连续，这是产品约束。
+ * 入场进度只有一个 Animatable，卡片和圆点共用；已入场过的条目零开销（见 [rememberEntranceProgress]）。
  */
 @Composable
 internal fun TimelineRow(
@@ -70,16 +82,21 @@ internal fun TimelineRow(
     beneficialLabel: String,
     badLabel: String,
     onOpen: () -> Unit,
-    onMediaClick: (path: String, isVideo: Boolean) -> Unit
+    onMediaClick: (path: String, isVideo: Boolean) -> Unit,
+    entrance: () -> Float = { 1f },
+    highlight: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     val side = RecordSide.of(entry.record.side)
     val isLeft = side == RecordSide.BENEFICIAL
     val label = if (isLeft) beneficialLabel else badLabel
     val dark = MaterialTheme.colorScheme.background == WarmPalette.BackgroundDark
     val colors = WarmPalette.side(entry.record.side, dark)
+    val offsetPx = with(LocalDensity.current) { ENTRANCE_OFFSET.toPx() }
+    val cardModifier = Modifier.slideFadeIn(entrance, fromPx = if (isLeft) -offsetPx else offsetPx)
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
             .padding(vertical = 4.dp),
@@ -98,7 +115,8 @@ internal fun TimelineRow(
                     label = label,
                     colors = colors,
                     onOpen = onOpen,
-                    onMediaClick = onMediaClick
+                    onMediaClick = onMediaClick,
+                    modifier = cardModifier
                 )
             }
         }
@@ -107,7 +125,9 @@ internal fun TimelineRow(
             modifier = Modifier
                 .width(AXIS_WIDTH)
                 .fillMaxHeight(),
-            dotColor = colors.accent
+            dotColor = colors.accent,
+            dotScale = entrance,
+            pulse = highlight
         )
 
         Box(
@@ -123,7 +143,8 @@ internal fun TimelineRow(
                     label = label,
                     colors = colors,
                     onOpen = onOpen,
-                    onMediaClick = onMediaClick
+                    onMediaClick = onMediaClick,
+                    modifier = cardModifier
                 )
             }
         }
@@ -136,9 +157,11 @@ private fun RecordCard(
     label: String,
     colors: com.dayline.ui.theme.SideColors,
     onOpen: () -> Unit,
-    onMediaClick: (path: String, isVideo: Boolean) -> Unit
+    onMediaClick: (path: String, isVideo: Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val record = entry.record
+    val interaction = remember { MutableInteractionSource() }
 
     Card(
         onClick = onOpen,
@@ -146,7 +169,10 @@ private fun RecordCard(
         colors = CardDefaults.cardColors(containerColor = colors.container),
         border = BorderStroke(1.dp, colors.border),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.fillMaxWidth()
+        interactionSource = interaction,
+        modifier = modifier
+            .pressScale(interaction, pressedScale = 0.97f)
+            .fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
 

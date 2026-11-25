@@ -18,6 +18,12 @@
 
 package com.dayline.ui.timeline
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import com.dayline.ui.motion.EntranceTracker
+import com.dayline.ui.motion.Motion
+import com.dayline.ui.motion.rememberEntranceProgress
+import com.dayline.util.Dates
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -73,7 +79,8 @@ fun TimelineScreen(
     onItemClick: (String) -> Unit,
     onMediaClick: (path: String, isVideo: Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    listState: LazyListState = rememberLazyListState()
+    listState: LazyListState = rememberLazyListState(),
+    entranceTracker: EntranceTracker = remember { EntranceTracker() }
 ) {
     val prefetchPx = with(LocalDensity.current) { 600.dp.toPx() }
 
@@ -105,21 +112,32 @@ fun TimelineScreen(
             }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        when {
-            items.loadState.refresh is LoadState.Loading && items.itemCount == 0 ->
-                LoadingState()
+    val phase = when {
+        items.loadState.refresh is LoadState.Loading && items.itemCount == 0 -> TimelinePhase.Loading
+        items.loadState.refresh is LoadState.Error && items.itemCount == 0 -> TimelinePhase.Error
+        items.itemCount == 0 && items.loadState.refresh is LoadState.NotLoading -> TimelinePhase.Empty
+        else -> TimelinePhase.List
+    }
+    val today = remember { Dates.today() }
 
-            items.loadState.refresh is LoadState.Error && items.itemCount == 0 ->
-                ErrorState(
-                    message = (items.loadState.refresh as LoadState.Error).error.message ?: "读取数据库失败",
-                    onRetry = { items.retry() }
-                )
+    // 状态之间淡入淡出，避免「转圈 → 空态 / 列表」硬切
+    Crossfade(
+        targetState = phase,
+        animationSpec = tween(Motion.MEDIUM),
+        label = "timelinePhase",
+        modifier = modifier.fillMaxSize()
+    ) { current ->
+        when (current) {
+            TimelinePhase.Loading -> LoadingState()
 
-            items.itemCount == 0 && items.loadState.refresh is LoadState.NotLoading ->
-                EmptyTimeline()
+            TimelinePhase.Error -> ErrorState(
+                message = (items.loadState.refresh as? LoadState.Error)?.error?.message ?: "读取数据库失败",
+                onRetry = { items.retry() }
+            )
 
-            else -> LazyColumn(state = listState, reverseLayout = true, modifier = Modifier.fillMaxSize()) {
+            TimelinePhase.Empty -> EmptyTimeline()
+
+            TimelinePhase.List -> LazyColumn(state = listState, reverseLayout = true, modifier = Modifier.fillMaxSize()) {
                 // reverseLayout 下首项在最底部：给 FAB 留出空间，今天最后一条不会被挡住
                 item(key = "fab-space", contentType = "state") { Spacer(Modifier.height(96.dp)) }
                 items(
@@ -127,14 +145,28 @@ fun TimelineScreen(
                     key = items.itemKey { it.key },
                     contentType = items.itemContentType { it::class }
                 ) { index ->
+                    // 新增 / 删除 / 跨天重排时，其余条目平滑让位；淡入交给自定义入场，这里关掉
+                    val placement = Modifier.animateItem(
+                        fadeInSpec = null,
+                        placementSpec = Motion.placementSpec,
+                        fadeOutSpec = tween(Motion.SHORT)
+                    )
                     when (val item = items[index]) {
-                        is TimelineItem.DayHeader -> DayHeaderRow(date = item.date)
+                        is TimelineItem.DayHeader -> DayHeaderRow(
+                            date = item.date,
+                            entrance = rememberEntranceProgress(item.key, index, entranceTracker),
+                            modifier = placement
+                        )
                         is TimelineItem.Entry -> TimelineRow(
                             entry = item.item,
                             beneficialLabel = beneficialLabel,
                             badLabel = badLabel,
                             onOpen = { onItemClick(item.item.record.id) },
-                            onMediaClick = onMediaClick
+                            onMediaClick = onMediaClick,
+                            entrance = rememberEntranceProgress(item.key, index, entranceTracker),
+                            // reverseLayout 下 index 0 就是今天最新的一条
+                            highlight = index == 0 && item.item.record.recordDate == today,
+                            modifier = placement
                         )
                         null -> Spacer(Modifier.height(84.dp))
                     }
@@ -154,6 +186,8 @@ fun TimelineScreen(
         }
     }
 }
+
+private enum class TimelinePhase { Loading, Error, Empty, List }
 
 /** 剩余可滚动距离 < threshold 时返回 true */
 internal fun computeShouldLoadMore(state: LazyListState, thresholdPx: Float): Boolean {

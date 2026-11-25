@@ -18,6 +18,16 @@
 
 package com.dayline.ui.timeline
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,26 +62,36 @@ import com.dayline.util.Dates
  * - 这里让它成为普通 item，靠横向贯穿的轴线 + 中间的日期胶囊保持视觉连续。
  */
 @Composable
-internal fun DayHeaderRow(date: String) {
+internal fun DayHeaderRow(date: String, entrance: () -> Float = { 1f }, modifier: Modifier = Modifier) {
     val axis = MaterialTheme.colorScheme.outlineVariant
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(64.dp)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 左半段轴线
+        // 左半段轴线：入场时从日期胶囊向外「拉开」
         Box(
             Modifier
                 .weight(1f)
                 .height(1.5.dp)
+                .graphicsLayer {
+                    transformOrigin = TransformOrigin(1f, 0.5f)
+                    scaleX = entrance().coerceIn(0f, 1f)
+                }
                 .background(axis)
         )
 
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp),
+            modifier = Modifier
+                .padding(horizontal = 14.dp)
+                .graphicsLayer {
+                    val p = entrance()
+                    alpha = p.coerceIn(0f, 1f)
+                    translationY = (1f - p) * 8.dp.toPx()
+                },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -91,6 +111,10 @@ internal fun DayHeaderRow(date: String) {
             Modifier
                 .weight(1f)
                 .height(1.5.dp)
+                .graphicsLayer {
+                    transformOrigin = TransformOrigin(0f, 0.5f)
+                    scaleX = entrance().coerceIn(0f, 1f)
+                }
                 .background(axis)
         )
     }
@@ -101,14 +125,32 @@ internal fun DayHeaderRow(date: String) {
  *
  * 取舍说明：竖线用 drawBehind 而不是 Canvas，是为了不额外引入一层布局节点——
  * 时间轴一屏可能有 20+ 行，每行少一个节点，滚动掉帧会少一截。
+ *
+ * 动效：
+ * - [dotScale]：圆点入场弹出，只在 draw 阶段读取；
+ * - [pulse]：今天最新一条的圆点外扩一圈呼吸光环。无限动画只在这一行里创建，
+ *   这一行滚出屏幕即随组合销毁，不会在后台空转。
  */
 @Composable
 internal fun TimelineAxis(
     modifier: Modifier = Modifier,
     dotColor: androidx.compose.ui.graphics.Color,
-    showDot: Boolean = true
+    showDot: Boolean = true,
+    dotScale: () -> Float = { 1f },
+    pulse: Boolean = false
 ) {
     val lineColor = MaterialTheme.colorScheme.outline
+    val pulseProgress: (() -> Float)? = if (pulse && showDot) {
+        val transition = rememberInfiniteTransition(label = "axisPulse")
+        val t = transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(1800, easing = LinearOutSlowInEasing), RepeatMode.Restart),
+            label = "axisPulseT"
+        )
+        remember(t) { { t.value } }
+    } else null
+
     Box(
         modifier = modifier.drawBehind {
             val cx = size.width / 2f
@@ -120,7 +162,18 @@ internal fun TimelineAxis(
                 cap = StrokeCap.Round
             )
             if (showDot) {
-                drawCircle(color = dotColor, radius = 4.dp.toPx(), center = Offset(cx, 40.dp.toPx()))
+                val center = Offset(cx, 40.dp.toPx())
+                val baseR = 4.dp.toPx()
+                if (pulseProgress != null) {
+                    val p = pulseProgress()
+                    drawCircle(
+                        color = dotColor.copy(alpha = 0.35f * (1f - p)),
+                        radius = baseR + p * 9.dp.toPx(),
+                        center = center
+                    )
+                }
+                val s = dotScale().coerceAtLeast(0f)
+                if (s > 0f) drawCircle(color = dotColor, radius = baseR * s, center = center)
             }
         }
     )
@@ -135,11 +188,10 @@ internal fun EmptyTimeline() {
             .padding(top = 96.dp, start = 32.dp, end = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
+        EmptyMotif(
             Modifier
                 .width(64.dp)
                 .height(64.dp)
-                .background(WarmPalette.SurfaceVariant, RoundedCornerShape(32.dp))
         )
         Spacer(Modifier.height(16.dp))
         Text(
@@ -157,4 +209,38 @@ internal fun EmptyTimeline() {
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.Center) {}
     }
+}
+
+/**
+ * 空态插画：一条中轴 + 左绿右橙两个圆点，交替上下浮动，呼应「两边合起来才是一天」。
+ * 纯 drawBehind 矢量绘制，没有图片资源；只在空态可见时存在。
+ */
+@Composable
+private fun EmptyMotif(modifier: Modifier = Modifier) {
+    val dark = MaterialTheme.colorScheme.background == WarmPalette.BackgroundDark
+    val bg = MaterialTheme.colorScheme.surfaceVariant
+    val axis = MaterialTheme.colorScheme.outline
+    val left = WarmPalette.side(com.dayline.domain.RecordSide.BENEFICIAL.value, dark).accent
+    val right = WarmPalette.side(com.dayline.domain.RecordSide.BAD.value, dark).accent
+    val transition = rememberInfiniteTransition(label = "emptyMotif")
+    val phase = transition.animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "emptyPhase"
+    )
+    Box(
+        modifier
+            .background(bg, RoundedCornerShape(32.dp))
+            .drawBehind {
+                val cx = size.width / 2f
+                val cy = size.height / 2f
+                val amp = 5.dp.toPx()
+                val r = 5.dp.toPx()
+                drawLine(axis, Offset(cx, size.height * 0.22f), Offset(cx, size.height * 0.78f), 2.dp.toPx(), StrokeCap.Round)
+                val p = phase.value
+                drawCircle(left, r, Offset(cx - 12.dp.toPx(), cy + p * amp))
+                drawCircle(right, r, Offset(cx + 12.dp.toPx(), cy - p * amp))
+            }
+    )
 }

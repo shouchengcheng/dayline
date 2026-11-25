@@ -28,6 +28,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.graphics.graphicsLayer
+import com.dayline.ui.motion.EntranceTracker
+import com.dayline.ui.motion.Motion
+import com.dayline.ui.motion.rememberLastNonNull
+import com.dayline.ui.motion.sharedAxisBy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -92,6 +103,13 @@ sealed interface Screen {
     data object Timeline : Screen
     data object Trash : Screen
     data object Settings : Screen
+}
+
+/** 页面层级：时间轴 → 设置 → 回收站，用来决定转场是「前进」还是「返回」 */
+private fun screenDepth(s: Screen): Int = when (s) {
+    Screen.Timeline -> 0
+    Screen.Settings -> 1
+    Screen.Trash -> 2
 }
 
 class MainActivity : ComponentActivity() {
@@ -173,49 +191,67 @@ private fun DaylineRoot(vm: DaylineViewModel) {
         ActivityResultContracts.OpenDocument()
     ) { uri -> uri?.let { vm.importBackup(it) } }
 
+    // 时间轴滚动位置 + 已入场集合提到这一层：去设置页再回来，不丢位置、不重播入场动画
+    val timelineListState = rememberLazyListState()
+    val entranceTracker = remember { EntranceTracker() }
+
     Box(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        when (screen) {
-            Screen.Timeline -> TimelineHome(
-                vm = vm,
-                settings = settings,
-                snackbar = snackbar,
-                onOpenSettings = { screen = Screen.Settings },
-                onNewRecord = { vm.newRecord(RecordSide.BENEFICIAL.value) }
-            )
+        AnimatedContent(
+            targetState = screen,
+            transitionSpec = { sharedAxisBy(::screenDepth) },
+            label = "screen"
+        ) { target ->
+            when (target) {
+                Screen.Timeline -> TimelineHome(
+                    vm = vm,
+                    settings = settings,
+                    snackbar = snackbar,
+                    listState = timelineListState,
+                    entranceTracker = entranceTracker,
+                    onOpenSettings = { screen = Screen.Settings },
+                    onNewRecord = { vm.newRecord(RecordSide.BENEFICIAL.value) }
+                )
 
-            Screen.Trash -> TrashScreen(
-                items = trash,
-                retentionDays = settings.trashRetentionDays,
-                onBack = { screen = Screen.Timeline },
-                onRestore = { vm.undoDelete(it) },
-                onPurge = { vm.purge(it) },
-                onPurgeAll = { vm.purgeAll() }
-            )
+                Screen.Trash -> TrashScreen(
+                    items = trash,
+                    retentionDays = settings.trashRetentionDays,
+                    onBack = { screen = Screen.Timeline },
+                    onRestore = { vm.undoDelete(it) },
+                    onPurge = { vm.purge(it) },
+                    onPurgeAll = { vm.purgeAll() }
+                )
 
-            Screen.Settings -> SettingsScreen(
-                state = settings,
-                darkMode = vm.darkMode.collectAsState().value,
-                busy = busy,
-                onBack = { screen = Screen.Timeline },
-                onSaveLabels = vm::setLabels,
-                onToggleDark = vm::toggleDark,
-                onRetentionDays = vm::setRetention,
-                onExport = vm::export,
-                onImport = { pickZip.launch(arrayOf("application/zip", "application/octet-stream")) },
-                onOpenTrash = { screen = Screen.Trash },
-                message = null,
-                onMessageShown = {}
-            )
+                Screen.Settings -> SettingsScreen(
+                    state = settings,
+                    darkMode = vm.darkMode.collectAsState().value,
+                    busy = busy,
+                    onBack = { screen = Screen.Timeline },
+                    onSaveLabels = vm::setLabels,
+                    onToggleDark = vm::toggleDark,
+                    onRetentionDays = vm::setRetention,
+                    onExport = vm::export,
+                    onImport = { pickZip.launch(arrayOf("application/zip", "application/octet-stream")) },
+                    onOpenTrash = { screen = Screen.Trash },
+                    message = null,
+                    onMessageShown = {}
+                )
+            }
         }
 
         // ---- 编辑页（全屏覆盖，带自己的 Scaffold）----
         // ---- 浏览模式：编辑器打开时隐藏，保存/取消后回到浏览 ----
-        if (editor == null) {
-            detail?.let { item ->
+        // 退出动画期间 detail / editor 已经是 null，用 rememberLastNonNull 保留最后一帧内容
+        val shownDetail = rememberLastNonNull(detail)
+        AnimatedVisibility(
+            visible = editor == null && detail != null,
+            enter = Motion.overlayEnter,
+            exit = Motion.overlayExit
+        ) {
+            shownDetail?.let { item ->
                 com.dayline.ui.detail.DetailScreen(
                     entry = item,
                     beneficialLabel = settings.beneficialLabel,
@@ -226,7 +262,13 @@ private fun DaylineRoot(vm: DaylineViewModel) {
             }
         }
 
-        editor?.let { state ->
+        val shownEditor = rememberLastNonNull(editor)
+        AnimatedVisibility(
+            visible = editor != null,
+            enter = Motion.overlayEnter,
+            exit = Motion.overlayExit
+        ) {
+            shownEditor?.let { state ->
             Box(
                 Modifier
                     .fillMaxSize()
@@ -270,6 +312,7 @@ private fun DaylineRoot(vm: DaylineViewModel) {
                     }
                 )
             }
+            }
         }
 
         // ---- “记在左边还是右边”底部选择 ----
@@ -302,12 +345,22 @@ private fun TimelineHome(
     vm: DaylineViewModel,
     settings: com.dayline.data.prefs.SettingsState,
     snackbar: SnackbarHostState,
+    listState: LazyListState,
+    entranceTracker: EntranceTracker,
     onOpenSettings: () -> Unit,
     onNewRecord: () -> Unit
 ) {
     val items = vm.timeline.collectAsLazyPagingItems()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // 往回翻历史时 FAB 收成圆形图标，回到「今天」再展开；derivedStateOf 只在布尔值翻转时重组
+    val fabExpanded by remember(listState) {
+        derivedStateOf { listState.firstVisibleItemIndex == 0 }
+    }
+    // 每次进入时间轴页时 FAB 弹出一下（Animatable 只有一个 float，离开页面即释放）
+    val fabIn = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { fabIn.animateTo(1f, Motion.dotPopSpec) }
 
     fun openMedia(path: String, isVideo: Boolean) {
         runCatching {
@@ -358,10 +411,17 @@ private fun TimelineHome(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onNewRecord,
+                expanded = fabExpanded,
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("记一笔") },
                 containerColor = WarmPalette.BeneficialAccent,
-                contentColor = androidx.compose.ui.graphics.Color.White
+                contentColor = androidx.compose.ui.graphics.Color.White,
+                modifier = Modifier.graphicsLayer {
+                    val s = fabIn.value
+                    scaleX = s
+                    scaleY = s
+                    alpha = s.coerceIn(0f, 1f)
+                }
             )
         }
     ) { padding ->
@@ -371,7 +431,9 @@ private fun TimelineHome(
             badLabel = settings.badLabel,
             onItemClick = { id -> vm.openRecord(id) },
             onMediaClick = { path, isVideo -> openMedia(path, isVideo) },
-            modifier = Modifier.padding(padding)
+            modifier = Modifier.padding(padding),
+            listState = listState,
+            entranceTracker = entranceTracker
         )
     }
 }
