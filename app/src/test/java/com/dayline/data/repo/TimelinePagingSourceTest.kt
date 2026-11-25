@@ -86,6 +86,10 @@ class TimelinePagingSourceTest {
         }
 
         override suspend fun findById(id: String): RecordWithTags? = TODO("分页逻辑不应调用")
+        override suspend fun pageDatesByTag(tag: String, limit: Int, offset: Int): List<String> =
+            TODO("未过滤时不应调用")
+        override suspend fun recordsForDatesByTag(dates: List<String>, tag: String): List<RecordWithTags> =
+            TODO("未过滤时不应调用")
         override suspend fun findEntityById(id: String): RecordEntity? = TODO("分页逻辑不应调用")
         override suspend fun findIdByFingerprint(fingerprint: String): String? = TODO("分页逻辑不应调用")
         override fun observeTrash(): Flow<List<RecordWithTags>> = flowOf(emptyList())

@@ -50,6 +50,31 @@ interface RecordDao {
     )
     suspend fun recordsForDates(dates: List<String>): List<RecordWithTags>
 
+    // ---------- 标签过滤版分页：只看带某个标签的记录 ----------
+
+    @Query(
+        """
+        SELECT DISTINCT r.recordDate FROM records r
+        JOIN record_tag rt ON rt.recordId = r.id
+        JOIN tags t ON t.id = rt.tagId
+        WHERE r.isDeleted = 0 AND t.name = :tag
+        ORDER BY r.recordDate DESC
+        LIMIT :limit OFFSET :offset
+        """
+    )
+    suspend fun pageDatesByTag(tag: String, limit: Int, offset: Int): List<String>
+
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM records
+        WHERE isDeleted = 0 AND recordDate IN (:dates)
+          AND id IN (SELECT rt.recordId FROM record_tag rt JOIN tags t ON t.id = rt.tagId WHERE t.name = :tag)
+        ORDER BY recordDate DESC, createdAt ASC, id ASC
+        """
+    )
+    suspend fun recordsForDatesByTag(dates: List<String>, tag: String): List<RecordWithTags>
+
     // ---------- 单条 ----------
 
     @Transaction

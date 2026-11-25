@@ -34,7 +34,9 @@ import com.dayline.domain.TimelineItem
  */
 class TimelinePagingSource(
     private val dao: RecordDao,
-    private val daysPerPage: Int = DEFAULT_DAYS_PER_PAGE
+    private val daysPerPage: Int = DEFAULT_DAYS_PER_PAGE,
+    /** 非空时只显示带该标签的记录（按标签名过滤） */
+    private val tagFilter: String? = null
 ) : PagingSource<Int, TimelineItem>() {
 
     override val jumpingSupported: Boolean = true
@@ -42,12 +44,17 @@ class TimelinePagingSource(
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, TimelineItem> {
         val page = params.key ?: 0
         return try {
-            val dates = dao.pageDates(limit = daysPerPage, offset = page * daysPerPage)
+            val tag = tagFilter
+            val dates = if (tag == null) {
+                dao.pageDates(limit = daysPerPage, offset = page * daysPerPage)
+            } else {
+                dao.pageDatesByTag(tag, limit = daysPerPage, offset = page * daysPerPage)
+            }
             if (dates.isEmpty()) {
                 return LoadResult.Page(data = emptyList(), prevKey = null, nextKey = null)
             }
 
-            val records = dao.recordsForDates(dates)
+            val records = if (tag == null) dao.recordsForDates(dates) else dao.recordsForDatesByTag(dates, tag)
             val byDate = records.groupBy { it.record.recordDate }
 
             val items = ArrayList<TimelineItem>(dates.size + records.size)

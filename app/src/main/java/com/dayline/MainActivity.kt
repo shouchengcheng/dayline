@@ -49,6 +49,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -351,6 +352,9 @@ private fun TimelineHome(
     onNewRecord: () -> Unit
 ) {
     val items = vm.timeline.collectAsLazyPagingItems()
+    val tagFilter by vm.tagFilter.collectAsStateWithLifecycle()
+    val allTags by vm.allTags.collectAsStateWithLifecycle(initialValue = emptyList())
+    var showTagMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -389,13 +393,46 @@ private fun TimelineHome(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("DayLine", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "${settings.beneficialLabel}  ·  ${settings.badLabel}",
+                            tagFilter?.let { "仅显示 #$it" } ?: "${settings.beneficialLabel}  ·  ${settings.badLabel}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (tagFilter != null) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 actions = {
+                    Box {
+                        IconButton(onClick = { showTagMenu = true }) {
+                            Icon(
+                                Icons.Default.FilterList,
+                                contentDescription = "按标签过滤",
+                                tint = if (tagFilter != null) MaterialTheme.colorScheme.primary
+                                else androidx.compose.ui.graphics.Color.Unspecified
+                            )
+                        }
+                        androidx.compose.material3.DropdownMenu(
+                            expanded = showTagMenu,
+                            onDismissRequest = { showTagMenu = false }
+                        ) {
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text(if (tagFilter == null) "✓ 全部" else "全部") },
+                                onClick = { vm.setTagFilter(null); showTagMenu = false }
+                            )
+                            if (allTags.isEmpty()) {
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text("还没有标签") },
+                                    onClick = { showTagMenu = false },
+                                    enabled = false
+                                )
+                            }
+                            allTags.forEach { tag ->
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(if (tagFilter == tag.name) "✓ #${tag.name}" else "#${tag.name}") },
+                                    onClick = { vm.setTagFilter(tag.name); showTagMenu = false }
+                                )
+                            }
+                        }
+                    }
                     IconButton(onClick = { items.refresh() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }

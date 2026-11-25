@@ -48,8 +48,20 @@ class RecordRepository(
      * 所以用 InvalidatingPagingSourceFactory + Room InvalidationTracker：
      * records / record_tag / tags 任一表有写入（记一笔、删除、恢复、导入），立刻让当前分页源失效重载。
      */
+    /** 当前标签过滤（null = 全部）。改变后让分页源失效，按新条件重载 */
+    private val _tagFilter = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val tagFilter: kotlinx.coroutines.flow.StateFlow<String?> = _tagFilter
+
+    fun setTagFilter(tag: String?) {
+        if (_tagFilter.value == tag) return
+        _tagFilter.value = tag
+        timelineSourceFactory.invalidate()
+    }
+
     private val timelineSourceFactory =
-        androidx.paging.InvalidatingPagingSourceFactory { TimelinePagingSource(recordDao) }
+        androidx.paging.InvalidatingPagingSourceFactory {
+            TimelinePagingSource(recordDao, tagFilter = _tagFilter.value)
+        }
 
     private val tableObserver = object : androidx.room.InvalidationTracker.Observer(
         arrayOf("records", "record_tag", "tags")

@@ -75,6 +75,9 @@ class DaylineViewModel(app: Application) : AndroidViewModel(app) {
 
     val trash = repo.trash
     val allTags = repo.allTags
+    val tagFilter: StateFlow<String?> = repo.tagFilter
+
+    fun setTagFilter(tag: String?) = repo.setTagFilter(tag)
 
     private val _darkMode = MutableStateFlow(false)
     val darkMode: StateFlow<Boolean> = _darkMode.asStateFlow()
