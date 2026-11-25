@@ -169,9 +169,9 @@ class TimelinePagingSourceTest {
         assertEquals(1, page.data.count { it is TimelineItem.DayHeader })
         assertEquals(4, page.data.count { it is TimelineItem.Entry })
 
-        // 组头必须在这一天的第一条之前
-        assertTrue(page.data.first() is TimelineItem.DayHeader)
-        assertEquals("2026-11-14", (page.data.first() as TimelineItem.DayHeader).date)
+        // 列表是 reverseLayout：数据里组头排在当天记录之后，渲染后才显示在这一天的最上方
+        assertTrue(page.data.last() is TimelineItem.DayHeader)
+        assertEquals("2026-11-14", (page.data.last() as TimelineItem.DayHeader).date)
     }
 
     @Test
