@@ -103,6 +103,7 @@ class TimelinePagingSourceTest {
         override suspend fun hardDelete(id: String) = TODO("分页逻辑不应调用")
         override suspend fun allRecordsWithTags(): List<RecordWithTags> = TODO("分页逻辑不应调用")
         override suspend fun allRecords(): List<RecordEntity> = TODO("分页逻辑不应调用")
+        override suspend fun allMediaRefs(): List<com.dayline.data.db.MediaRefs> = TODO("分页逻辑不应调用")
         override suspend fun activeCount(): Int = TODO("分页逻辑不应调用")
     }
 

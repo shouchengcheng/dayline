@@ -90,7 +90,7 @@ internal fun TimelineRow(
     val side = RecordSide.of(entry.record.side)
     val isLeft = side == RecordSide.BENEFICIAL
     val label = if (isLeft) beneficialLabel else badLabel
-    val dark = MaterialTheme.colorScheme.background == WarmPalette.BackgroundDark
+    val dark = com.dayline.ui.theme.LocalIsDarkTheme.current
     val colors = WarmPalette.side(entry.record.side, dark)
     val offsetPx = with(LocalDensity.current) { ENTRANCE_OFFSET.toPx() }
     val cardModifier = Modifier.slideFadeIn(entrance, fromPx = if (isLeft) -offsetPx else offsetPx)
@@ -238,29 +238,28 @@ private fun MediaStrip(
     record: com.dayline.data.db.RecordEntity,
     onMediaClick: (path: String, isVideo: Boolean) -> Unit
 ) {
-    val items: List<Pair<String, Boolean>> = buildList {
-        record.imagePaths.forEach { add(it to false) }
-        record.videoPaths.forEachIndexed { index, path ->
-            add((record.videoCoverPaths.getOrNull(index) ?: "") to true)
-        }
-    }
-    val shown = items.take(3)
-    val overflow = items.size - shown.size
+    val total = record.imagePaths.size + record.videoPaths.size
+    val shownCount = minOf(total, 3)
+    val overflow = total - shownCount
 
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        shown.forEachIndexed { index, (path, isVideo) ->
+        // 先图片后视频；视频要用「在 videoPaths 里的下标」取文件，而不是在混合列表里的位置
+        // （否则「1 图 + 2 视频」时点第一个视频会打开第二个视频）
+        for (i in 0 until shownCount) {
             val box = Modifier.size(58.dp)
-            if (isVideo) {
-                VideoThumb(
-                    coverPath = path.ifEmpty { null },
-                    modifier = box,
-                    onClick = { onMediaClick(record.videoPaths[index.coerceAtMost(record.videoPaths.lastIndex)], true) }
-                )
-            } else {
+            if (i < record.imagePaths.size) {
+                val path = record.imagePaths[i]
                 ImageThumb(
                     relativePath = path,
                     modifier = box,
                     onClick = { onMediaClick(path, false) }
+                )
+            } else {
+                val v = i - record.imagePaths.size
+                VideoThumb(
+                    coverPath = record.videoCoverPaths.getOrNull(v)?.ifEmpty { null },
+                    modifier = box,
+                    onClick = { onMediaClick(record.videoPaths[v], true) }
                 )
             }
         }

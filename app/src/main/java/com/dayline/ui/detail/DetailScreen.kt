@@ -80,7 +80,7 @@ fun DetailScreen(
 ) {
     val record = entry.record
     val isBad = record.side == RecordSide.BAD.value
-    val dark = MaterialTheme.colorScheme.background == WarmPalette.BackgroundDark
+    val dark = com.dayline.ui.theme.LocalIsDarkTheme.current
     val colors = WarmPalette.side(record.side, dark)
 
     var viewerIndex by remember { mutableStateOf<Int?>(null) }

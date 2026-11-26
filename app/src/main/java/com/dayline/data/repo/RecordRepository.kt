@@ -201,69 +201,96 @@ class RecordRepository(
         db.withTransaction { recordDao.markDeleted(id, System.currentTimeMillis()) }
     }
 
+    /**
+     * 恢复：指纹需要媒体 sha256。
+     * 与 [save] 同样的取舍：先在**事务外**解析 sha（优先查 media_files 索引，查不到才现算哈希），
+     * 事务里只做一次 UPDATE，避免读大视频期间长时间持有写锁。
+     */
     suspend fun restore(id: String) {
-        db.withTransaction {
-            val entity = recordDao.findEntityById(id) ?: return@withTransaction
-            val fp = Fingerprint.of(
-                content = entity.content,
-                side = entity.side,
-                recordDate = entity.recordDate,
-                tagNames = recordDao.findById(id)?.tagNames ?: emptyList(),
-                mediaShas = (entity.imagePaths + entity.videoPaths + entity.videoCoverPaths)
-                    .mapNotNull { runCatching { media.sha256Of(media.resolve(it)) }.getOrNull() }
-            )
-            recordDao.markRestored(id, System.currentTimeMillis(), fp)
-        }
+        val item = recordDao.findById(id) ?: return
+        val entity = item.record
+        val shas = (entity.imagePaths + entity.videoPaths + entity.videoCoverPaths)
+            .mapNotNull { shaOf(it) }
+        val fp = Fingerprint.of(
+            content = entity.content,
+            side = entity.side,
+            recordDate = entity.recordDate,
+            tagNames = item.tagNames,
+            mediaShas = shas
+        )
+        db.withTransaction { recordDao.markRestored(id, System.currentTimeMillis(), fp) }
     }
 
     /** 彻底删除：删记录 + 清理不再被引用的媒体文件 */
     suspend fun purge(id: String) {
-        db.withTransaction {
-            val entity = recordDao.findEntityById(id) ?: return@withTransaction
+        val orphans = db.withTransaction {
+            val entity = recordDao.findEntityById(id) ?: return@withTransaction emptyList<String>()
             recordDao.hardDelete(id)
             tagDao.pruneOrphans()
-            gcMedia(entity.imagePaths + entity.videoPaths + entity.videoCoverPaths)
+            unindexOrphans(entity.imagePaths + entity.videoPaths + entity.videoCoverPaths)
         }
+        deleteFiles(orphans)
     }
 
     suspend fun purgeAllTrash() {
-        db.withTransaction {
+        val orphans = db.withTransaction {
             val trashed = recordDao.trashedRecords()
             val paths = trashed.flatMap { it.imagePaths + it.videoPaths + it.videoCoverPaths }
             trashed.forEach { recordDao.hardDelete(it.id) }
             tagDao.pruneOrphans()
-            gcMedia(paths)
+            unindexOrphans(paths)
+        }
+        deleteFiles(orphans)
+    }
+
+    /**
+     * 在事务内：找出不再被任何记录引用的候选路径，并从 media_files 索引里移除。
+     * 返回需要删除的文件路径——**真正删文件放到事务提交之后**：
+     * 若事务回滚，文件还在，不会出现「库里有记录、磁盘上文件没了」的不一致。
+     *
+     * 只查三列路径（[RecordDao.allMediaRefs]），不把正文 / 指纹等整行读进内存。
+     */
+    private suspend fun unindexOrphans(candidatePaths: List<String>): List<String> {
+        if (candidatePaths.isEmpty()) return emptyList()
+        val stillUsed = HashSet<String>()
+        for (ref in recordDao.allMediaRefs()) {
+            stillUsed += ref.imagePaths
+            stillUsed += ref.videoPaths
+            stillUsed += ref.videoCoverPaths
+        }
+        val orphans = candidatePaths.distinct().filter { it !in stillUsed }
+        for (path in orphans) {
+            mediaDao.findByPath(path)?.let { mediaDao.delete(it.sha256) }
+        }
+        return orphans
+    }
+
+    private suspend fun deleteFiles(paths: List<String>) {
+        if (paths.isEmpty()) return
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            for (path in paths) runCatching { media.resolve(path).delete() }
         }
     }
 
-    /** 只删没有被任何记录引用的媒体；covers 跟随其视频是否存在 */
-    private suspend fun gcMedia(candidatePaths: List<String>) {
-        if (candidatePaths.isEmpty()) return
-        val stillUsed = recordDao.allRecords()
-            .flatMap { it.imagePaths + it.videoPaths + it.videoCoverPaths }
-            .toHashSet()
-        for (path in candidatePaths.distinct()) {
-            if (path in stillUsed) continue
-            val sha = runCatching { media.sha256Of(media.resolve(path)) }.getOrNull()
-            if (sha != null) mediaDao.delete(sha)
-            media.resolve(path).delete()
-        }
-    }
+    /** 路径 → sha256：优先查索引（O(1) 查询），没登记过的老数据才读文件现算 */
+    private suspend fun shaOf(path: String): String? =
+        mediaDao.findByPath(path)?.sha256
+            ?: runCatching { media.resolve(path).takeIf { it.isFile }?.let { media.sha256Of(it) } }.getOrNull()
 
     /** 回收站过期清理：默认 30 天 */
     suspend fun purgeExpired(retentionDays: Int) {
         if (retentionDays <= 0) return
         val cutoff = System.currentTimeMillis() - retentionDays * 24L * 3600_000L
-        db.withTransaction {
+        val orphans = db.withTransaction {
             val expired = recordDao.trashedRecords().filter { (it.deletedAt ?: 0L) < cutoff }
+            if (expired.isEmpty()) return@withTransaction emptyList<String>()
             val paths = expired.flatMap { it.imagePaths + it.videoPaths + it.videoCoverPaths }
             expired.forEach { recordDao.hardDelete(it.id) }
             tagDao.pruneOrphans()
-            gcMedia(paths)
+            unindexOrphans(paths)
         }
+        deleteFiles(orphans)
     }
-
-    suspend fun currentSettingsSnapshot() = Unit
 
     data class SaveOutcome(val id: String, val isNew: Boolean)
 }

@@ -217,7 +217,7 @@ internal fun EmptyTimeline() {
  */
 @Composable
 private fun EmptyMotif(modifier: Modifier = Modifier) {
-    val dark = MaterialTheme.colorScheme.background == WarmPalette.BackgroundDark
+    val dark = com.dayline.ui.theme.LocalIsDarkTheme.current
     val bg = MaterialTheme.colorScheme.surfaceVariant
     val axis = MaterialTheme.colorScheme.outline
     val left = WarmPalette.side(com.dayline.domain.RecordSide.BENEFICIAL.value, dark).accent

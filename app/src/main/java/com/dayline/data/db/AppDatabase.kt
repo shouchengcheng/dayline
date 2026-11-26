@@ -30,7 +30,8 @@ import androidx.room.TypeConverters
         MediaFileEntity::class
     ],
     version = 1,
-    exportSchema = false
+    // 导出 schema 到 app/schemas/ 并纳入版本库：以后升级 version 时可以写 Migration / AutoMigration 并做迁移测试
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

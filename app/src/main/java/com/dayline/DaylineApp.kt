@@ -57,8 +57,12 @@ class DaylineApp : Application() {
 
 class AppContainer(app: Application) {
 
+    /**
+     * 取舍说明：**不再** fallbackToDestructiveMigration()。
+     * 这是纯离线日记，没有云端副本——升级 schema 时一旦缺 Migration 就清库，等于静默删光用户日记。
+     * 现在缺 Migration 会直接崩溃，在开发 / 测试阶段就能暴露出来；schema 已通过 exportSchema 导出。
+     */
     val db: AppDatabase = Room.databaseBuilder(app, AppDatabase::class.java, AppDatabase.NAME)
-        .fallbackToDestructiveMigration()  // v1 阶段：还没有需要保留的旧库
         .build()
 
     val media = MediaStore(app)

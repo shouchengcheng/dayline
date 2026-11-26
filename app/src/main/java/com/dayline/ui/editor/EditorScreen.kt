@@ -327,7 +327,7 @@ private fun SideSelector(
     badLabel: String,
     onChange: (String) -> Unit
 ) {
-    val dark = MaterialTheme.colorScheme.background == WarmPalette.BackgroundDark
+    val dark = com.dayline.ui.theme.LocalIsDarkTheme.current
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
         SideOption(
             label = beneficialLabel,

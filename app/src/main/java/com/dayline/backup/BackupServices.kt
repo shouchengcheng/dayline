@@ -27,7 +27,9 @@ import com.dayline.data.prefs.SettingsRepository
 import com.dayline.data.repo.MergeApplier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import java.io.File
 import java.util.UUID
 
@@ -180,6 +182,10 @@ class ImportService(
         encodeDefaults = true
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
+    private fun decodeDocument(input: java.io.InputStream): BackupDocument =
+        json.decodeFromStream(BackupDocument.serializer(), input)
+
     suspend fun import(zip: File, onProgress: (String) -> Unit = {}): ImportReport = withContext(Dispatchers.IO) {
         onProgress("正在读取备份包…")
 
@@ -187,8 +193,8 @@ class ImportService(
         var document: BackupDocument? = null
         ZipArchive.read(zip) { name, _, input ->
             if (name == ZipArchive.ENTRY_RECORDS_JSON) {
-                val text = input.readBytes().toString(Charsets.UTF_8)
-                document = runCatching { json.decodeFromString(BackupDocument.serializer(), text) }.getOrNull()
+                // 直接从 zip 流解码：不再先 readBytes() 成 ByteArray 再转 String（峰值内存约为 json 体积的 3 倍）
+                document = runCatching { decodeDocument(input) }.getOrNull()
             }
         }
         val doc = document ?: return@withContext ImportReport.failed("备份包里没有可解析的 records.json")

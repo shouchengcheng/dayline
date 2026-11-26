@@ -128,6 +128,10 @@ interface RecordDao {
     @Query("SELECT * FROM records")
     suspend fun allRecords(): List<RecordEntity>
 
+    /** 媒体回收用：只读三列路径 */
+    @Query("SELECT imagePaths, videoPaths, videoCoverPaths FROM records")
+    suspend fun allMediaRefs(): List<MediaRefs>
+
     @Query("SELECT COUNT(*) FROM records WHERE isDeleted = 0")
     suspend fun activeCount(): Int
 }
