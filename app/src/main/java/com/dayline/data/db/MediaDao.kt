@@ -40,8 +40,4 @@ interface MediaDao {
 
     @Query("DELETE FROM media_files WHERE sha256 = :sha256")
     suspend fun delete(sha256: String)
-
-    /** 找出没有被任何记录引用的媒体，供回收站彻底删除后清理 */
-    @Query("SELECT * FROM media_files")
-    suspend fun allForGc(): List<MediaFileEntity>
 }

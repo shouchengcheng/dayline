@@ -40,7 +40,9 @@ data class SettingsState(
     /** 该键为 true 说明用户改过名字，导入时不覆盖 */
     val beneficialCustom: Boolean = false,
     val badCustom: Boolean = false,
-    val trashRetentionDays: Int = DEFAULT_RETENTION_DAYS
+    val trashRetentionDays: Int = DEFAULT_RETENTION_DAYS,
+    /** 深色模式：null = 跟随系统；true / false = 用户手动指定（持久化，重启不丢） */
+    val darkMode: Boolean? = null
 ) {
     companion object {
         const val DEFAULT_BENEFICIAL = "有益"
@@ -57,6 +59,7 @@ class SettingsRepository(private val context: Context) {
         val BENEFICIAL_CUSTOM = booleanPreferencesKey("beneficial_custom")
         val BAD_CUSTOM = booleanPreferencesKey("bad_custom")
         val RETENTION = stringPreferencesKey("trash_retention_days")
+        val DARK_MODE = booleanPreferencesKey("dark_mode")
     }
 
     val state: Flow<SettingsState> = context.dataStore.data
@@ -68,7 +71,8 @@ class SettingsRepository(private val context: Context) {
                 beneficialCustom = p[Keys.BENEFICIAL_CUSTOM] ?: false,
                 badCustom = p[Keys.BAD_CUSTOM] ?: false,
                 trashRetentionDays = p[Keys.RETENTION]?.toIntOrNull()
-                    ?: SettingsState.DEFAULT_RETENTION_DAYS
+                    ?: SettingsState.DEFAULT_RETENTION_DAYS,
+                darkMode = p[Keys.DARK_MODE]
             )
         }
 
@@ -87,6 +91,13 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit {
             it[Keys.BAD_LABEL] = trimmed
             it[Keys.BAD_CUSTOM] = trimmed != SettingsState.DEFAULT_BAD
+        }
+    }
+
+    /** null = 清除手动设置，回到跟随系统 */
+    suspend fun setDarkMode(value: Boolean?) {
+        context.dataStore.edit {
+            if (value == null) it.remove(Keys.DARK_MODE) else it[Keys.DARK_MODE] = value
         }
     }
 

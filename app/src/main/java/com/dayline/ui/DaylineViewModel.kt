@@ -38,7 +38,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -79,8 +78,6 @@ class DaylineViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setTagFilter(tag: String?) = repo.setTagFilter(tag)
 
-    private val _darkMode = MutableStateFlow(false)
-    val darkMode: StateFlow<Boolean> = _darkMode.asStateFlow()
 
     private val _editor = MutableStateFlow<EditorState?>(null)
     val editor: StateFlow<EditorState?> = _editor.asStateFlow()
@@ -278,9 +275,8 @@ class DaylineViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setRetention(days: Int) = viewModelScope.launch { settingsRepo.setRetentionDays(days) }
 
-    fun toggleDark(on: Boolean) {
-        _darkMode.value = on
-    }
+    /** 深色模式写入 DataStore；UI 通过 [settings] 的 darkMode 字段读取（null = 跟随系统） */
+    fun toggleDark(on: Boolean) = viewModelScope.launch { settingsRepo.setDarkMode(on) }
 
     fun consumeMessage() {
         _message.value = null
@@ -324,9 +320,6 @@ class DaylineViewModel(app: Application) : AndroidViewModel(app) {
             _busy.value = null
         }
     }
-
-    @Suppress("unused")
-    private fun <T> Flow<T>.guard() = distinctUntilChanged()
 }
 
 /** 取 Flow 当前值（只用于 allTags 这类小集合的一次性读取） */

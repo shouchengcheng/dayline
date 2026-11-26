@@ -180,7 +180,7 @@ private fun TrashCard(
                 Text(
                     text = item.record.recordDate.let { d -> "${Dates.subtitle(d)}" },
                     style = MaterialTheme.typography.labelMedium,
-                    color = WarmPalette.side(item.record.side, false).accent
+                    color = WarmPalette.side(item.record.side, com.dayline.ui.theme.LocalIsDarkTheme.current).accent
                 )
                 Spacer(Modifier.weight(1f))
                 item.record.deletedAt?.let {

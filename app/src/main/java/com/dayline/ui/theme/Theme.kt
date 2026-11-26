@@ -25,6 +25,7 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -89,13 +90,22 @@ fun DaylineTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) WarmDarkColorScheme else WarmColorScheme,
-        typography = DaylineTypography,
-        shapes = WarmShapes,
-        content = content
-    )
+    CompositionLocalProvider(LocalIsDarkTheme provides darkTheme) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) WarmDarkColorScheme else WarmColorScheme,
+            typography = DaylineTypography,
+            shapes = WarmShapes,
+            content = content
+        )
+    }
 }
+
+/**
+ * 当前是否深色主题。
+ * 取舍说明：之前各页面用 `colorScheme.background == BackgroundDark` 反推，一旦调色就会悄悄失效；
+ * 由主题直接下发布尔值更可靠，且 static local 只在切换主题时整树失效（本来就要全量重绘）。
+ */
+val LocalIsDarkTheme = staticCompositionLocalOf { false }
 
 /** 供卡片自定义的额外色位（Material 3 里没有"左右两侧分别配色"这种语义） */
 data class SideColors(

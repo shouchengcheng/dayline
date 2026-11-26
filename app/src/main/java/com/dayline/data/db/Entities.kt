@@ -139,3 +139,10 @@ data class RecordHead(
 data class DateRow(
     @ColumnInfo(name = "recordDate") val recordDate: String
 )
+
+/** 只取媒体路径三列，供媒体回收时判断「是否仍被引用」，不把正文等整行读进内存 */
+data class MediaRefs(
+    @ColumnInfo(name = "imagePaths") val imagePaths: List<String>,
+    @ColumnInfo(name = "videoPaths") val videoPaths: List<String>,
+    @ColumnInfo(name = "videoCoverPaths") val videoCoverPaths: List<String>
+)

@@ -40,6 +40,8 @@ import com.dayline.ui.motion.Motion
 import com.dayline.ui.motion.rememberLastNonNull
 import com.dayline.ui.motion.sharedAxisBy
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.dayline.ui.theme.LocalIsDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -50,10 +52,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -69,11 +69,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -113,6 +113,12 @@ private fun screenDepth(s: Screen): Int = when (s) {
     Screen.Trash -> 2
 }
 
+/** Screen 存成层级数字，供 rememberSaveable 在重建时还原 */
+private val ScreenSaver = androidx.compose.runtime.saveable.Saver<Screen, Int>(
+    save = { screenDepth(it) },
+    restore = { d -> when (d) { 1 -> Screen.Settings; 2 -> Screen.Trash; else -> Screen.Timeline } }
+)
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -120,7 +126,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val vm: DaylineViewModel = viewModel()
-            val dark by vm.darkMode.collectAsStateWithLifecycle()
+            val prefs by vm.settings.collectAsStateWithLifecycle()
+            // 用户没手动设置过就跟随系统
+            val dark = prefs.darkMode ?: isSystemInDarkTheme()
             DaylineTheme(darkTheme = dark) {
                 DaylineRoot(vm)
             }
@@ -143,8 +151,8 @@ private fun DaylineRoot(vm: DaylineViewModel) {
     val exportFile by vm.exportFile.collectAsStateWithLifecycle()
     val trash by vm.trash.collectAsStateWithLifecycle(initialValue = emptyList())
 
-    var screen by remember { mutableStateOf<Screen>(Screen.Timeline) }
-    var showSidePicker by remember { mutableStateOf(false) }
+    // rememberSaveable：旋转屏幕 / 进程被回收后重建时停留在原页面，而不是跳回时间轴
+    var screen by rememberSaveable(stateSaver = ScreenSaver) { mutableStateOf<Screen>(Screen.Timeline) }
 
     // ---- 一次性消息 -> Snackbar ----
     LaunchedEffect(message) {
@@ -171,10 +179,11 @@ private fun DaylineRoot(vm: DaylineViewModel) {
     }
 
     // ---- 系统返回键 ----
-    BackHandler(enabled = editor != null || screen != Screen.Timeline || showSidePicker) {
+    BackHandler(enabled = editor != null || screen != Screen.Timeline) {
         when {
-            showSidePicker -> showSidePicker = false
             editor != null -> vm.closeEditor()
+            // 回收站是从设置页进去的，返回时回到设置页
+            screen == Screen.Trash -> screen = Screen.Settings
             else -> screen = Screen.Timeline
         }
     }
@@ -220,7 +229,7 @@ private fun DaylineRoot(vm: DaylineViewModel) {
                 Screen.Trash -> TrashScreen(
                     items = trash,
                     retentionDays = settings.trashRetentionDays,
-                    onBack = { screen = Screen.Timeline },
+                    onBack = { screen = Screen.Settings },
                     onRestore = { vm.undoDelete(it) },
                     onPurge = { vm.purge(it) },
                     onPurgeAll = { vm.purgeAll() }
@@ -228,7 +237,7 @@ private fun DaylineRoot(vm: DaylineViewModel) {
 
                 Screen.Settings -> SettingsScreen(
                     state = settings,
-                    darkMode = vm.darkMode.collectAsState().value,
+                    darkMode = LocalIsDarkTheme.current,
                     busy = busy,
                     onBack = { screen = Screen.Timeline },
                     onSaveLabels = vm::setLabels,
@@ -314,19 +323,6 @@ private fun DaylineRoot(vm: DaylineViewModel) {
                 )
             }
             }
-        }
-
-        // ---- “记在左边还是右边”底部选择 ----
-        if (showSidePicker) {
-            SidePickerSheet(
-                beneficialLabel = settings.beneficialLabel,
-                badLabel = settings.badLabel,
-                onPick = { side ->
-                    showSidePicker = false
-                    vm.newRecord(side)
-                },
-                onDismiss = { showSidePicker = false }
-            )
         }
 
         // 编辑页自带 SnackbarHost 会挡住全屏；这里对外层 snackbar 给一个可见位置
@@ -471,68 +467,6 @@ private fun TimelineHome(
             modifier = Modifier.padding(padding),
             listState = listState,
             entranceTracker = entranceTracker
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SidePickerSheet(
-    beneficialLabel: String,
-    badLabel: String,
-    onPick: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp)
-        ) {
-            Text("记在哪一边？", style = MaterialTheme.typography.headlineSmall)
-            androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 8.dp))
-            Text(
-                "左边是你做对的事，右边是让你难受的事。\n两边合起来才是一天。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 20.dp))
-            SideButton(
-                label = beneficialLabel,
-                colors = WarmPalette.side(RecordSide.BENEFICIAL.value, false),
-                onClick = { onPick(RecordSide.BENEFICIAL.value) }
-            )
-            androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 12.dp))
-            SideButton(
-                label = badLabel,
-                colors = WarmPalette.side(RecordSide.BAD.value, false),
-                onClick = { onPick(RecordSide.BAD.value) }
-            )
-            androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 24.dp))
-        }
-    }
-}
-
-@Composable
-private fun SideButton(
-    label: String,
-    colors: com.dayline.ui.theme.SideColors,
-    onClick: () -> Unit
-) {
-    androidx.compose.material3.Surface(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(0.dp),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
-        color = colors.container,
-        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = colors.accent,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp)
         )
     }
 }
