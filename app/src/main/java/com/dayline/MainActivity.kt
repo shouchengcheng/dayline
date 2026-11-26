@@ -121,24 +121,45 @@ private val ScreenSaver = androidx.compose.runtime.saveable.Saver<Screen, Int>(
 
 class MainActivity : ComponentActivity() {
 
+    /** 来自桌面小组件 / 长按图标 / 通知栏磁贴的速记请求（携带目标侧别） */
+    private val pendingQuickSide = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        if (savedInstanceState == null) {
+            pendingQuickSide.value = com.dayline.quick.QuickEntry.extractSide(intent)
+        }
         setContent {
             val vm: DaylineViewModel = viewModel()
             val prefs by vm.settings.collectAsStateWithLifecycle()
+            val quickSide by pendingQuickSide.collectAsStateWithLifecycle()
             // 用户没手动设置过就跟随系统
             val dark = prefs.darkMode ?: isSystemInDarkTheme()
             DaylineTheme(darkTheme = dark) {
-                DaylineRoot(vm)
+                DaylineRoot(
+                    vm = vm,
+                    quickSide = quickSide,
+                    onConsumeQuickSide = { pendingQuickSide.value = null }
+                )
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        com.dayline.quick.QuickEntry.extractSide(intent)?.let { pendingQuickSide.value = it }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DaylineRoot(vm: DaylineViewModel) {
+private fun DaylineRoot(
+    vm: DaylineViewModel,
+    quickSide: String?,
+    onConsumeQuickSide: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
@@ -153,6 +174,15 @@ private fun DaylineRoot(vm: DaylineViewModel) {
 
     // rememberSaveable：旋转屏幕 / 进程被回收后重建时停留在原页面，而不是跳回时间轴
     var screen by rememberSaveable(stateSaver = ScreenSaver) { mutableStateOf<Screen>(Screen.Timeline) }
+
+    // ---- 外部速记入口（小组件 / 长按图标 / 通知栏磁贴）-> 直达完整编辑页 ----
+    LaunchedEffect(quickSide) {
+        val side = quickSide ?: return@LaunchedEffect
+        screen = Screen.Timeline
+        vm.closeDetail()
+        vm.newRecord(side)
+        onConsumeQuickSide()
+    }
 
     // ---- 一次性消息 -> Snackbar ----
     LaunchedEffect(message) {

@@ -146,3 +146,9 @@ data class MediaRefs(
     @ColumnInfo(name = "videoPaths") val videoPaths: List<String>,
     @ColumnInfo(name = "videoCoverPaths") val videoCoverPaths: List<String>
 )
+
+/** 桌面小组件用：按侧别统计某天记录条数 */
+data class SideCount(
+    @ColumnInfo(name = "side") val side: String,
+    @ColumnInfo(name = "cnt") val count: Int
+)

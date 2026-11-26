@@ -50,7 +50,12 @@ class DaylineApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         appScope.launch {
-            runCatching { container.recordRepository.purgeExpired(container.settings.snapshot().trashRetentionDays) }
+            runCatching {
+                val snap = container.settings.snapshot()
+                com.dayline.quick.QuickEntry.syncDynamicShortcuts(this@DaylineApp, snap.beneficialLabel, snap.badLabel)
+                com.dayline.quick.DaylineWidgetProvider.requestUpdate(this@DaylineApp)
+                container.recordRepository.purgeExpired(snap.trashRetentionDays)
+            }
         }
     }
 }
