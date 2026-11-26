@@ -132,6 +132,10 @@ interface RecordDao {
     @Query("SELECT imagePaths, videoPaths, videoCoverPaths FROM records")
     suspend fun allMediaRefs(): List<MediaRefs>
 
+    /** 桌面小组件用：按侧别统计某天记录条数 */
+    @Query("SELECT side, COUNT(*) AS cnt FROM records WHERE isDeleted = 0 AND recordDate = :date GROUP BY side")
+    suspend fun countsForDate(date: String): List<SideCount>
+
     @Query("SELECT COUNT(*) FROM records WHERE isDeleted = 0")
     suspend fun activeCount(): Int
 }

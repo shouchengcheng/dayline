@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 桌面小组件深色模式（与 WarmPalette 深咖底对齐） -->
+    <color name="widget_bg">#201A16</color>
+    <color name="widget_border">#4A3E33</color>
+    <color name="widget_title">#F1E8DE</color>
+    <color name="widget_subtitle">#C4B6A6</color>
+
+    <color name="widget_beneficial_bg">#2C3324</color>
+    <color name="widget_beneficial_border">#4A593A</color>
+    <color name="widget_beneficial_text">#9DBB78</color>
+
+    <color name="widget_bad_bg">#33241D</color>
+    <color name="widget_bad_border">#5C4034</color>
+    <color name="widget_bad_text">#D29C7E</color>
+</resources>

@@ -68,6 +68,7 @@ class RecordRepository(
     ) {
         override fun onInvalidated(tables: Set<String>) {
             timelineSourceFactory.invalidate()
+            com.dayline.quick.DaylineWidgetProvider.requestUpdate(context)
         }
     }
 

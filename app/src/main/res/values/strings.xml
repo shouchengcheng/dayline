@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">暖记</string>
+    <string name="widget_description">在桌面一键记一条，并查看今日双栏条数</string>
+    <string name="tile_quick_add_label">暖记 · 记一笔</string>
 </resources>

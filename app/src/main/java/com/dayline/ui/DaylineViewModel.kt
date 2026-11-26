@@ -270,6 +270,10 @@ class DaylineViewModel(app: Application) : AndroidViewModel(app) {
     fun setLabels(beneficial: String, bad: String) = viewModelScope.launch {
         settingsRepo.setBeneficialLabel(beneficial)
         settingsRepo.setBadLabel(bad)
+        val snap = settingsRepo.snapshot()
+        val app = getApplication<Application>()
+        com.dayline.quick.QuickEntry.syncDynamicShortcuts(app, snap.beneficialLabel, snap.badLabel)
+        com.dayline.quick.DaylineWidgetProvider.requestUpdate(app)
         _message.value = "分类名称已保存"
     }
 
@@ -312,6 +316,10 @@ class DaylineViewModel(app: Application) : AndroidViewModel(app) {
                 f
             }
             val report = container.importService.import(tmp) { step -> _busy.value = step }
+            val snap = settingsRepo.snapshot()
+            val app = getApplication<Application>()
+            com.dayline.quick.QuickEntry.syncDynamicShortcuts(app, snap.beneficialLabel, snap.badLabel)
+            com.dayline.quick.DaylineWidgetProvider.requestUpdate(app)
             _message.value = report.summary()
             tmp.delete()
         } catch (t: Throwable) {

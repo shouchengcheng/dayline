@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="12dp">
+
+    <!-- 顶栏：点这里打开完整时间轴 -->
+    <LinearLayout
+        android:id="@+id/widget_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingBottom="10dp">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="暖记 · 今天"
+            android:textColor="@color/widget_title"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_counts"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:text="今天还没记"
+            android:textColor="@color/widget_subtitle"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- 双栏速记按钮：直接进入完整编辑页（支持文字 / 图片 / 视频 / 标签）并预选好对应侧别 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_btn_beneficial"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="5dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_btn_beneficial"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:minHeight="42dp"
+            android:paddingHorizontal="10dp"
+            android:text="+ 有益"
+            android:textColor="@color/widget_beneficial_text"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_btn_bad"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="5dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_btn_bad"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:minHeight="42dp"
+            android:paddingHorizontal="10dp"
+            android:text="+ 糟糕"
+            android:textColor="@color/widget_bad_text"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</LinearLayout>

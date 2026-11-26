@@ -77,6 +77,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -137,6 +138,14 @@ fun EditorScreen(
 ) {
     var newTag by remember { mutableStateOf("") }
     var confirmDelete by remember { mutableStateOf(false) }
+    val contentFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+
+    // 新建记录（包括小组件/快捷方式直达）自动聚焦正文框，立刻弹起键盘，减少一步点击
+    androidx.compose.runtime.LaunchedEffect(state.id, state.isNew) {
+        if (state.isNew && state.content.isEmpty()) {
+            runCatching { contentFocus.requestFocus() }
+        }
+    }
 
     if (confirmDelete && onDelete != null) {
         AlertDialog(
@@ -204,7 +213,8 @@ fun EditorScreen(
                 onValueChange = onChangeContent,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 160.dp),
+                    .heightIn(min = 160.dp)
+                    .focusRequester(contentFocus),
                 placeholder = {
                     Text(
                         if (state.side == RecordSide.BAD.value) {

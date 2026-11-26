@@ -2,4 +2,18 @@
 <resources>
     <!-- 自适应图标的底色：与 App 背景同色，图标在桌面上不会出现方块边缘 -->
     <color name="ic_launcher_background">#FDF8F3</color>
+
+    <!-- 桌面小组件暖色调（与 WarmPalette 对齐） -->
+    <color name="widget_bg">#FDF8F3</color>
+    <color name="widget_border">#E3D8CB</color>
+    <color name="widget_title">#4A3F35</color>
+    <color name="widget_subtitle">#8A7A68</color>
+
+    <color name="widget_beneficial_bg">#F2F6E6</color>
+    <color name="widget_beneficial_border">#D8E5BC</color>
+    <color name="widget_beneficial_text">#6F8F4E</color>
+
+    <color name="widget_bad_bg">#F6EBE4</color>
+    <color name="widget_bad_border">#E7D2C5</color>
+    <color name="widget_bad_text">#B07A5E</color>
 </resources>
